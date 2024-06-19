@@ -1,0 +1,182 @@
+### Подробный процесс решения модуля 3, используя Postman
+
+#### Шаг 1: Установка Postman
+
+1. **Скачивание и установка Postman:**
+   - Перейдите на [официальный сайт Postman](https://www.postman.com/downloads/).
+   - Скачайте и установите версию Postman, подходящую для вашей операционной системы.
+
+#### Шаг 2: Создание и настройка API-сервера
+
+Для демонстрации работы с API, предположим, что у вас уже настроен API-сервер на C# с использованием ASP.NET Core. Если у вас его нет, вы можете создать простой сервер, следуя шагам ниже.
+
+1. **Создание нового проекта ASP.NET Core:**
+   - Откройте Visual Studio.
+   - Создайте новый проект: `ASP.NET Core Web API`.
+   - Назовите его, например, `ClinicAPI`.
+
+2. **Добавление моделей и контроллеров:**
+
+   - **Модель пациента (Patient):**
+     ```csharp
+     public class Patient
+     {
+         public int Id { get; set; }
+         public string FirstName { get; set; }
+         public string LastName { get; set; }
+         public DateTime BirthDate { get; set; }
+         public string Gender { get; set; }
+     }
+     ```
+
+   - **Контроллер для управления пациентами (PatientsController):**
+     ```csharp
+     [Route("api/[controller]")]
+     [ApiController]
+     public class PatientsController : ControllerBase
+     {
+         private static List<Patient> patients = new List<Patient>
+         {
+             new Patient { Id = 1, FirstName = "John", LastName = "Doe", BirthDate = new DateTime(1985, 6, 15), Gender = "Male" },
+             new Patient { Id = 2, FirstName = "Jane", LastName = "Smith", BirthDate = new DateTime(1990, 11, 20), Gender = "Female" }
+         };
+
+         [HttpGet]
+         public ActionResult<IEnumerable<Patient>> GetPatients()
+         {
+             return patients;
+         }
+
+         [HttpGet("{id}")]
+         public ActionResult<Patient> GetPatient(int id)
+         {
+             var patient = patients.FirstOrDefault(p => p.Id == id);
+             if (patient == null)
+             {
+                 return NotFound();
+             }
+             return patient;
+         }
+
+         [HttpPost]
+         public ActionResult<Patient> AddPatient(Patient patient)
+         {
+             patient.Id = patients.Max(p => p.Id) + 1;
+             patients.Add(patient);
+             return CreatedAtAction(nameof(GetPatient), new { id = patient.Id }, patient);
+         }
+
+         [HttpPut("{id}")]
+         public IActionResult UpdatePatient(int id, Patient patient)
+         {
+             var existingPatient = patients.FirstOrDefault(p => p.Id == id);
+             if (existingPatient == null)
+             {
+                 return NotFound();
+             }
+             existingPatient.FirstName = patient.FirstName;
+             existingPatient.LastName = patient.LastName;
+             existingPatient.BirthDate = patient.BirthDate;
+             existingPatient.Gender = patient.Gender;
+             return NoContent();
+         }
+
+         [HttpDelete("{id}")]
+         public IActionResult DeletePatient(int id)
+         {
+             var patient = patients.FirstOrDefault(p => p.Id == id);
+             if (patient == null)
+             {
+                 return NotFound();
+             }
+             patients.Remove(patient);
+             return NoContent();
+         }
+     }
+     ```
+
+3. **Запуск API-сервера:**
+   - Нажмите `Ctrl+F5`, чтобы запустить сервер без отладки.
+
+#### Шаг 3: Работа с API в Postman
+
+1. **Запуск Postman:**
+   - Откройте Postman.
+
+2. **Создание новой коллекции:**
+   - В левой панели нажмите `New` и выберите `Collection`.
+   - Назовите коллекцию, например, `ClinicAPI`.
+
+3. **Добавление запросов в коллекцию:**
+
+   - **Получение списка пациентов (GET /api/patients):**
+     - Нажмите `New`, выберите `Request`.
+     - Назовите запрос, например, `Get Patients`.
+     - Выберите метод `GET` и введите URL: `http://localhost:5000/api/patients`.
+     - Нажмите `Save`, выберите вашу коллекцию `ClinicAPI` и сохраните запрос.
+
+   - **Получение пациента по ID (GET /api/patients/{id}):**
+     - Создайте новый запрос, назовите его `Get Patient by ID`.
+     - Выберите метод `GET` и введите URL: `http://localhost:5000/api/patients/1` (замените 1 на нужный ID).
+     - Сохраните запрос в коллекцию.
+
+   - **Добавление нового пациента (POST /api/patients):**
+     - Создайте новый запрос, назовите его `Add Patient`.
+     - Выберите метод `POST` и введите URL: `http://localhost:5000/api/patients`.
+     - Перейдите на вкладку `Body`, выберите `raw`, и укажите тип `JSON`.
+     - Введите тело запроса:
+       ```json
+       {
+           "FirstName": "Alice",
+           "LastName": "Johnson",
+           "BirthDate": "1995-08-24",
+           "Gender": "Female"
+       }
+       ```
+     - Сохраните запрос в коллекцию.
+
+   - **Обновление пациента (PUT /api/patients/{id}):**
+     - Создайте новый запрос, назовите его `Update Patient`.
+     - Выберите метод `PUT` и введите URL: `http://localhost:5000/api/patients/1` (замените 1 на нужный ID).
+     - Перейдите на вкладку `Body`, выберите `raw`, и укажите тип `JSON`.
+     - Введите тело запроса:
+       ```json
+       {
+           "FirstName": "Alice",
+           "LastName": "Johnson",
+           "BirthDate": "1995-08-24",
+           "Gender": "Female"
+       }
+       ```
+     - Сохраните запрос в коллекцию.
+
+   - **Удаление пациента (DELETE /api/patients/{id}):**
+     - Создайте новый запрос, назовите его `Delete Patient`.
+     - Выберите метод `DELETE` и введите URL: `http://localhost:5000/api/patients/1` (замените 1 на нужный ID).
+     - Сохраните запрос в коллекцию.
+
+4. **Выполнение запросов:**
+
+   - **Получение списка пациентов:**
+     - Выберите запрос `Get Patients` и нажмите `Send`.
+     - Должен отобразиться список пациентов.
+
+   - **Получение пациента по ID:**
+     - Выберите запрос `Get Patient by ID` и нажмите `Send`.
+     - Должна отобразиться информация о пациенте с указанным ID.
+
+   - **Добавление нового пациента:**
+     - Выберите запрос `Add Patient` и нажмите `Send`.
+     - Новый пациент должен быть добавлен, и вы должны увидеть его данные в ответе.
+
+   - **Обновление пациента:**
+     - Выберите запрос `Update Patient` и нажмите `Send`.
+     - Данные пациента должны быть обновлены.
+
+   - **Удаление пациента:**
+     - Выберите запрос `Delete Patient` и нажмите `Send`.
+     - Пациент должен быть удален.
+
+### Заключение
+
+Используя Postman, вы можете эффективно взаимодействовать с вашим API для разработки и тестирования функциональности. Этот процесс включает установку Postman, создание и настройку API-сервера, создание коллекции и запросов в Postman, и выполнение этих запросов для проверки работы API.
