@@ -1,0 +1,134 @@
+### Полный процесс разработки модуля 2 с использованием SQL Server Management Studio (SSMS)
+
+#### 1. Установка и настройка SQL Server и SSMS
+1. **Скачивание и установка SQL Server:**
+   - Перейдите на [официальный сайт Microsoft SQL Server](https://www.microsoft.com/en-us/sql-server/sql-server-downloads).
+   - Скачайте и установите SQL Server Developer Edition, следуя инструкциям мастера установки.
+
+2. **Скачивание и установка SQL Server Management Studio (SSMS):**
+   - Перейдите на [страницу загрузки SSMS](https://docs.microsoft.com/en-us/sql/ssms/download-sql-server-management-studio-ssms).
+   - Скачайте и установите последнюю версию SSMS.
+
+#### 2. Создание базы данных и таблиц в SSMS
+1. **Запуск SSMS:**
+   - Откройте SQL Server Management Studio.
+   - Подключитесь к вашему серверу.
+
+2. **Создание новой базы данных:**
+   - В Object Explorer, щелкните правой кнопкой мыши на папке `Databases` и выберите `New Database...`.
+   - Введите имя базы данных, например, `ClinicDB`, и нажмите `OK`.
+
+3. **Создание таблиц:**
+   - В Object Explorer разверните папку `Databases`, найдите вашу новую базу данных `ClinicDB`, и разверните её.
+   - Щелкните правой кнопкой мыши на папке `Tables` и выберите `New Table...`.
+   
+   - **Создание таблицы `Patients`:**
+     ```sql
+     CREATE TABLE Patients (
+         Id INT PRIMARY KEY IDENTITY(1,1),
+         FirstName NVARCHAR(50) NOT NULL,
+         LastName NVARCHAR(50) NOT NULL,
+         BirthDate DATE NOT NULL,
+         Gender NVARCHAR(10) NOT NULL
+     );
+     ```
+     Введите этот код в редакторе запросов и нажмите `Execute`.
+
+   - **Создание таблицы `Appointments`:**
+     ```sql
+     CREATE TABLE Appointments (
+         Id INT PRIMARY KEY IDENTITY(1,1),
+         PatientId INT NOT NULL,
+         DoctorName NVARCHAR(50) NOT NULL,
+         AppointmentDate DATE NOT NULL,
+         Status NVARCHAR(20) NOT NULL,
+         FOREIGN KEY (PatientId) REFERENCES Patients(Id)
+     );
+     ```
+     Введите этот код в редакторе запросов и нажмите `Execute`.
+
+#### 3. Вставка данных в таблицы
+1. **Вставка данных в таблицу `Patients`:**
+   ```sql
+   INSERT INTO Patients (FirstName, LastName, BirthDate, Gender)
+   VALUES ('John', 'Doe', '1985-06-15', 'Male');
+
+   INSERT INTO Patients (FirstName, LastName, BirthDate, Gender)
+   VALUES ('Jane', 'Smith', '1990-11-20', 'Female');
+   ```
+
+2. **Вставка данных в таблицу `Appointments`:**
+   ```sql
+   INSERT INTO Appointments (PatientId, DoctorName, AppointmentDate, Status)
+   VALUES (1, 'Dr. Adams', '2023-07-10', 'Scheduled');
+
+   INSERT INTO Appointments (PatientId, DoctorName, AppointmentDate, Status)
+   VALUES (2, 'Dr. Brown', '2023-07-11', 'Completed');
+   ```
+
+#### 4. Выполнение запросов
+1. **Запрос всех пациентов:**
+   ```sql
+   SELECT * FROM Patients;
+   ```
+
+2. **Запрос всех записей на приём:**
+   ```sql
+   SELECT * FROM Appointments;
+   ```
+
+3. **Запрос информации о записях с информацией о пациентах:**
+   ```sql
+   SELECT a.Id, p.FirstName, p.LastName, a.DoctorName, a.AppointmentDate, a.Status
+   FROM Appointments a
+   JOIN Patients p ON a.PatientId = p.Id;
+   ```
+
+#### 5. Создание хранимых процедур и представлений
+1. **Создание хранимой процедуры для добавления пациента:**
+   ```sql
+   CREATE PROCEDURE AddPatient
+       @FirstName NVARCHAR(50),
+       @LastName NVARCHAR(50),
+       @BirthDate DATE,
+       @Gender NVARCHAR(10)
+   AS
+   BEGIN
+       INSERT INTO Patients (FirstName, LastName, BirthDate, Gender)
+       VALUES (@FirstName, @LastName, @BirthDate, @Gender);
+   END;
+   ```
+
+2. **Создание представления для просмотра всех записей на приём с информацией о пациентах:**
+   ```sql
+   CREATE VIEW ViewAppointments
+   AS
+   SELECT a.Id, p.FirstName, p.LastName, a.DoctorName, a.AppointmentDate, a.Status
+   FROM Appointments a
+   JOIN Patients p ON a.PatientId = p.Id;
+   ```
+
+#### 6. Создание индексов для оптимизации запросов
+1. **Создание индекса на таблице `Patients`:**
+   ```sql
+   CREATE INDEX idx_patients_lastname ON Patients(LastName);
+   ```
+
+2. **Создание индекса на таблице `Appointments`:**
+   ```sql
+   CREATE INDEX idx_appointments_date ON Appointments(AppointmentDate);
+   ```
+
+#### 7. Резервное копирование базы данных
+1. **Создание резервной копии базы данных:**
+   - В Object Explorer щелкните правой кнопкой мыши на базе данных `ClinicDB`, выберите `Tasks`, затем `Back Up...`.
+   - Выберите параметры резервного копирования и нажмите `OK` для создания резервной копии.
+
+#### 8. Документирование базы данных
+1. **Генерация скриптов базы данных:**
+   - В Object Explorer щелкните правой кнопкой мыши на базе данных `ClinicDB`, выберите `Tasks`, затем `Generate Scripts...`.
+   - Следуйте инструкциям мастера для генерации скриптов создания таблиц, процедур и других объектов базы данных.
+
+### Заключение
+
+Процесс разработки модуля 2 с использованием SQL Server Management Studio включает в себя установку и настройку SQL Server и SSMS, создание базы данных и таблиц, вставку данных, выполнение запросов, создание хранимых процедур и представлений, оптимизацию запросов с помощью индексов, резервное копирование базы данных и документирование базы данных. Следуя этим шагам, вы сможете эффективно управлять данными и выполнять различные операции по их обработке.
