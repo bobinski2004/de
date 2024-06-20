@@ -1,0 +1,276 @@
+### Проектирование и разработка объектов баз данных для информационной системы "Поликлиника"
+
+#### 1. ER-диаграмма
+Для информационной системы "Поликлиника" спроектируем ER-диаграмму, обеспечивающую 3 нормальную форму и ссылочную целостность.
+
+**Основные сущности:**
+1. Пациенты (Patients)
+2. Врачи (Doctors)
+3. Администраторы (Admins)
+4. Приемы (Appointments)
+5. Медицинские записи (MedicalRecords)
+
+**ER-диаграмма:**
+
+```plaintext
++-------------------+      +-------------------+     +-------------------+
+| Patients          |      | Doctors           |     | Admins            |
++-------------------+      +-------------------+     +-------------------+
+| PatientID (PK)    |      | DoctorID (PK)     |     | AdminID (PK)      |
+| Name              |      | Name              |     | Name              |
+| Email             |      | Specialization    |     | Email             |
+| Password          |      | Email             |     | Password          |
++-------------------+      +-------------------+     +-------------------+
+
+                       +-------------------+
+                       | Appointments      |
+                       +-------------------+
+                       | AppointmentID (PK)|
+                       | PatientID (FK)    |
+                       | DoctorID (FK)     |
+                       | Date              |
+                       | Time              |
+                       | Status            |
+                       +-------------------+
+
+                           +-------------------+
+                           | MedicalRecords    |
+                           +-------------------+
+                           | RecordID (PK)     |
+                           | PatientID (FK)    |
+                           | DoctorID (FK)     |
+                           | Date              |
+                           | Diagnosis         |
+                           | Treatment         |
+                           +-------------------+
+```
+
+- **Patients**:
+  - PatientID (PK)
+  - Name
+  - Email
+  - Password
+
+- **Doctors**:
+  - DoctorID (PK)
+  - Name
+  - Specialization
+  - Email
+
+- **Admins**:
+  - AdminID (PK)
+  - Name
+  - Email
+  - Password
+
+- **Appointments**:
+  - AppointmentID (PK)
+  - PatientID (FK)
+  - DoctorID (FK)
+  - Date
+  - Time
+  - Status
+
+- **MedicalRecords**:
+  - RecordID (PK)
+  - PatientID (FK)
+  - DoctorID (FK)
+  - Date
+  - Diagnosis
+  - Treatment
+
+##### Сохраните ER-диаграмму в формате .pdf
+
+#### 2. Создание базы данных и таблиц в SQLite
+
+```sql
+-- Создание таблицы пациентов
+CREATE TABLE Patients (
+    PatientID INTEGER PRIMARY KEY,
+    Name TEXT NOT NULL,
+    Email TEXT UNIQUE NOT NULL,
+    Password TEXT NOT NULL
+);
+
+-- Создание таблицы врачей
+CREATE TABLE Doctors (
+    DoctorID INTEGER PRIMARY KEY,
+    Name TEXT NOT NULL,
+    Specialization TEXT NOT NULL,
+    Email TEXT UNIQUE NOT NULL
+);
+
+-- Создание таблицы администраторов
+CREATE TABLE Admins (
+    AdminID INTEGER PRIMARY KEY,
+    Name TEXT NOT NULL,
+    Email TEXT UNIQUE NOT NULL,
+    Password TEXT NOT NULL
+);
+
+-- Создание таблицы приемов
+CREATE TABLE Appointments (
+    AppointmentID INTEGER PRIMARY KEY,
+    PatientID INTEGER NOT NULL,
+    DoctorID INTEGER NOT NULL,
+    Date TEXT NOT NULL,
+    Time TEXT NOT NULL,
+    Status TEXT NOT NULL,
+    FOREIGN KEY (PatientID) REFERENCES Patients(PatientID),
+    FOREIGN KEY (DoctorID) REFERENCES Doctors(DoctorID)
+);
+
+-- Создание таблицы медицинских записей
+CREATE TABLE MedicalRecords (
+    RecordID INTEGER PRIMARY KEY,
+    PatientID INTEGER NOT NULL,
+    DoctorID INTEGER NOT NULL,
+    Date TEXT NOT NULL,
+    Diagnosis TEXT NOT NULL,
+    Treatment TEXT NOT NULL,
+    FOREIGN KEY (PatientID) REFERENCES Patients(PatientID),
+    FOREIGN KEY (DoctorID) REFERENCES Doctors(DoctorID)
+);
+
+-- Вставка начальных тестовых данных
+INSERT INTO Patients (Name, Email, Password) VALUES ('Иван Иванов', 'ivanov@example.com', 'password1');
+INSERT INTO Patients (Name, Email, Password) VALUES ('Петр Петров', 'petrov@example.com', 'password2');
+INSERT INTO Patients (Name, Email, Password) VALUES ('Сергей Сергеев', 'sergeev@example.com', 'password3');
+
+INSERT INTO Doctors (Name, Specialization, Email) VALUES ('Доктор А', 'Терапевт', 'doctorA@example.com');
+INSERT INTO Doctors (Name, Specialization, Email) VALUES ('Доктор Б', 'Хирург', 'doctorB@example.com');
+INSERT INTO Doctors (Name, Specialization, Email) VALUES ('Доктор В', 'Кардиолог', 'doctorV@example.com');
+
+INSERT INTO Admins (Name, Email, Password) VALUES ('Админ1', 'admin1@example.com', 'adminpassword1');
+INSERT INTO Admins (Name, Email, Password) VALUES ('Админ2', 'admin2@example.com', 'adminpassword2');
+INSERT INTO Admins (Name, Email, Password) VALUES ('Админ3', 'admin3@example.com', 'adminpassword3');
+
+INSERT INTO Appointments (PatientID, DoctorID, Date, Time, Status) VALUES (1, 1, '2024-06-20', '10:00', 'Запланировано');
+INSERT INTO Appointments (PatientID, DoctorID, Date, Time, Status) VALUES (2, 2, '2024-06-21', '11:00', 'Запланировано');
+INSERT INTO Appointments (PatientID, DoctorID, Date, Time, Status) VALUES (3, 3, '2024-06-22', '12:00', 'Запланировано');
+
+INSERT INTO MedicalRecords (PatientID, DoctorID, Date, Diagnosis, Treatment) VALUES (1, 1, '2024-06-20', 'Грипп', 'Постельный режим');
+INSERT INTO MedicalRecords (PatientID, DoctorID, Date, Diagnosis, Treatment) VALUES (2, 2, '2024-06-21', 'Аппендицит', 'Операция');
+INSERT INTO MedicalRecords (PatientID, DoctorID, Date, Diagnosis, Treatment) VALUES (3, 3, '2024-06-22', 'Аритмия', 'Медикаментозное лечение');
+```
+
+#### 3. Разработка словаря данных
+
+**Patients**
+
+| KEY FIELD NAME | DATA TYPE / FIELD SIZE | REQUIRED? | NOTES             |
+|----------------|------------------------|-----------|-------------------|
+| PatientID      | INTEGER                | Да        | Первичный ключ    |
+| Name           | TEXT                   | Да        |                   |
+| Email          | TEXT                   | Да        | Уникальное        |
+| Password       | TEXT                   | Да        |                   |
+
+**Doctors**
+
+| KEY FIELD NAME | DATA TYPE / FIELD SIZE | REQUIRED? | NOTES             |
+|----------------|------------------------|-----------|-------------------|
+| DoctorID       | INTEGER                | Да        | Первичный ключ    |
+| Name           | TEXT                   | Да        |                   |
+| Specialization | TEXT                   | Да        |                   |
+| Email          | TEXT                   | Да        | Уникальное        |
+
+**Admins**
+
+| KEY FIELD NAME | DATA TYPE / FIELD SIZE | REQUIRED? | NOTES             |
+|----------------|------------------------|-----------|-------------------|
+| AdminID        | INTEGER                | Да        | Первичный ключ    |
+| Name           | TEXT                   | Да        |                   |
+| Email          | TEXT                   | Да        | Уникальное        |
+| Password       | TEXT                   | Да        |                   |
+
+**Appointments**
+
+| KEY FIELD NAME | DATA TYPE / FIELD SIZE | REQUIRED? | NOTES                 |
+|----------------|------------------------|-----------|-----------------------|
+| AppointmentID  | INTEGER                | Да        | Первичный ключ        |
+| PatientID      | INTEGER                | Да        | Внешний ключ на PatientID |
+| DoctorID       | INTEGER                | Да        | Внешний ключ на DoctorID  |
+| Date           | TEXT                   | Да        |                       |
+| Time           | TEXT                   | Да        |                       |
+| Status         | TEXT                   | Да        |                       |
+
+**MedicalRecords**
+
+| KEY FIELD NAME | DATA TYPE / FIELD SIZE | REQUIRED? | NOTES                 |
+|----------------|------------------------|-----------|-----------------------|
+| RecordID       | INTEGER                | Да        | Первичный ключ        |
+| PatientID      | INTEGER                | Да        | Внешний ключ на PatientID |
+| DoctorID       | INTEGER                | Да        | Внешний ключ на DoctorID  |
+| Date           | TEXT                   | Да        |                       |
+| Diagnosis      | TEXT                   | Да        |                       |
+| Treatment      | TEXT                   | Да        |                       |
+
+#### 4. Создание процедуры проверки даты приема
+
+```sql
+CREATE PROCEDURE CheckAppointmentDates()
+BEGIN
+    SELECT
+        AppointmentID,
+        Date,
+        CASE
+            WHEN julianday(Date) >= julianday('now') THEN 1
+            ELSE 0
+        END AS Validity
+    FROM
+        Appointments;
+END;
+```
+
+#### 5. Создание триггера для записи изменений в таблице приема пациентов
+
+```sql
+CREATE TRIGGER LogAppointmentChanges
+AFTER UPDATE ON Appointments
+FOR EACH ROW
+BEGIN
+    INSERT INTO AppointmentLogs (AppointmentID, OldStatus, NewStatus, ChangeDate)
+    VALUES (OLD.AppointmentID, OLD.Status, NEW.Status, datetime('now'));
+END;
+```
+
+Создадим таблицу `AppointmentLogs`
+
+ для хранения изменений:
+
+```sql
+CREATE TABLE AppointmentLogs (
+    LogID INTEGER PRIMARY KEY,
+    AppointmentID INTEGER,
+    OldStatus TEXT,
+    NewStatus TEXT,
+    ChangeDate TEXT,
+    FOREIGN KEY (AppointmentID) REFERENCES Appointments(AppointmentID)
+);
+```
+
+#### 6. Скрипт резервного копирования базы данных
+
+```bash
+#!/bin/bash
+# Скрипт для резервного копирования базы данных SQLite
+
+DB_NAME="polyclinic.db"
+BACKUP_NAME="polyclinic_backup_$(date +%F).db"
+
+# Копирование базы данных
+cp $DB_NAME $BACKUP_NAME
+
+echo "Резервное копирование базы данных выполнено: $BACKUP_NAME"
+```
+
+### Итоги работы
+
+1. ER-диаграмма сохранена в формате .pdf.
+2. База данных создана и заполнена тестовыми данными.
+3. Словарь данных разработан.
+4. Процедура проверки даты приема создана.
+5. Триггер для записи изменений данных создан.
+6. Скрипт резервного копирования базы данных написан.
+
+Сохраните все результаты работы и передайте их экспертам на проверку согласно указаниям главного эксперта.
