@@ -1,0 +1,652 @@
+### Разработка API для приложения "Поликлиника"
+
+#### Стек технологий:
+- База данных: SQLite
+- Backend: Flask (Python)
+- Инструмент тестирования API: Postman
+
+#### Структура проекта:
+- `app.py`: основной файл приложения
+- `models.py`: файл с описанием моделей базы данных
+- `database.py`: файл для инициализации базы данных
+- `routes.py`: файл с описанием маршрутов API
+- `requirements.txt`: зависимости проекта
+
+### Шаги разработки
+
+#### 1. Инициализация проекта и установка зависимостей
+
+Создайте виртуальное окружение и установите необходимые зависимости:
+```bash
+python -m venv venv
+source venv/bin/activate  # для Windows: venv\Scripts\activate
+pip install flask flask_sqlalchemy flask_marshmallow flask_httpauth
+pip install python-dotenv
+```
+
+Создайте файл `requirements.txt` и добавьте зависимости:
+```txt
+Flask==2.0.1
+Flask-SQLAlchemy==2.5.1
+Flask-Marshmallow==0.14.0
+Flask-HTTPAuth==4.4.0
+python-dotenv==0.19.0
+```
+
+#### 2. Настройка базы данных
+
+Создайте файл `database.py` для инициализации базы данных:
+```python
+# database.py
+from flask_sqlalchemy import SQLAlchemy
+
+db = SQLAlchemy()
+```
+
+Создайте файл `models.py` для описания моделей базы данных:
+```python
+# models.py
+from datetime import datetime
+from database import db
+
+class Patient(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    first_name = db.Column(db.String(50), nullable=False)
+    last_name = db.Column(db.String(50), nullable=False)
+    birth_date = db.Column(db.Date, nullable=False)
+    gender = db.Column(db.String(10), nullable=False)
+    phone = db.Column(db.String(20), nullable=False)
+    email = db.Column(db.String(50), nullable=False, unique=True)
+    address = db.Column(db.String(100), nullable=False)
+
+class Appointment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
+    doctor_id = db.Column(db.Integer, nullable=False)
+    date_time = db.Column(db.DateTime, nullable=False)
+    description = db.Column(db.String(200), nullable=False)
+
+    patient = db.relationship('Patient', backref=db.backref('appointments', lazy=True))
+```
+
+#### 3. Создание приложения и маршрутов API
+
+Создайте файл `app.py` для запуска приложения:
+```python
+# app.py
+from flask import Flask
+from database import db
+from models import Patient, Appointment
+from routes import patient_blueprint, appointment_blueprint
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///polyclinic.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db.init_app(app)
+
+with app.app_context():
+    db.create_all()
+
+app.register_blueprint(patient_blueprint, url_prefix='/patients')
+app.register_blueprint(appointment_blueprint, url_prefix='/appointments')
+
+if __name__ == '__main__':
+    app.run(debug=True)
+```
+
+Создайте файл `routes.py` для определения маршрутов API:
+```python
+# routes.py
+from flask import Blueprint, request, jsonify
+from models import db, Patient, Appointment
+
+patient_blueprint = Blueprint('patients', __name__)
+appointment_blueprint = Blueprint('appointments', __name__)
+
+# CRUD для пациентов
+@patient_blueprint.route('/', methods=['POST'])
+def create_patient():
+    data = request.json
+    new_patient = Patient(
+        first_name=data['first_name'],
+        last_name=data['last_name'],
+        birth_date=data['birth_date'],
+        gender=data['gender'],
+        phone=data['phone'],
+        email=data['email'],
+        address=data['address']
+    )
+    db.session.add(new_patient)
+    db.session.commit()
+    return jsonify({"id": new_patient.id}), 201
+
+@patient_blueprint.route('/', methods=['GET'])
+def get_patients():
+    patients = Patient.query.all()
+    return jsonify([{
+        'id': p.id,
+        'first_name': p.first_name,
+        'last_name': p.last_name,
+        'birth_date': p.birth_date,
+        'gender': p.gender,
+        'phone': p.phone,
+        'email': p.email,
+        'address': p.address
+    } for p in patients])
+
+@patient_blueprint.route('/<int:id>', methods=['GET'])
+def get_patient(id):
+    patient = Patient.query.get_or_404(id)
+    return jsonify({
+        'id': patient.id,
+        'first_name': patient.first_name,
+        'last_name': patient.last_name,
+        'birth_date': patient.birth_date,
+        'gender': patient.gender,
+        'phone': patient.phone,
+        'email': patient.email,
+        'address': patient.address
+    })
+
+@patient_blueprint.route('/<int:id>', methods=['PUT'])
+def update_patient(id):
+    data = request.json
+    patient = Patient.query.get_or_404(id)
+    patient.first_name = data['first_name']
+    patient.last_name = data['last_name']
+    patient.birth_date = data['birth_date']
+    patient.gender = data['gender']
+    patient.phone = data['phone']
+    patient.email = data['email']
+    patient.address = data['address']
+    db.session.commit()
+    return jsonify({
+        'id': patient.id,
+        'first_name': patient.first_name,
+        'last_name': patient.last_name,
+        'birth_date': patient.birth_date,
+        'gender': patient.gender,
+        'phone': patient.phone,
+        'email': patient.email,
+        'address': patient.address
+    })
+
+@patient_blueprint.route('/<int:id>', methods=['DELETE'])
+def delete_patient(id):
+    patient = Patient.query.get_or_404(id)
+    db.session.delete(patient)
+    db.session.commit()
+    return jsonify({"message": "Patient deleted successfully"})
+
+# CRUD для записей на прием
+@appointment_blueprint.route('/', methods=['POST'])
+def create_appointment():
+    data = request.json
+    new_appointment = Appointment(
+        patient_id=data['patient_id'],
+        doctor_id=data['doctor_id'],
+        date_time=data['date_time'],
+        description=data['description']
+    )
+    db.session.add(new_appointment)
+    db.session.commit()
+    return jsonify({"id": new_appointment.id}), 201
+
+@appointment_blueprint.route('/', methods=['GET'])
+def get_appointments():
+    appointments = Appointment.query.all()
+    return jsonify([{
+        'id': a.id,
+        'patient_id': a.patient_id,
+        'doctor_id': a.doctor_id,
+        'date_time': a.date_time,
+        'description': a.description
+    } for a in appointments])
+
+@appointment_blueprint.route('/<int:id>', methods=['GET'])
+def get_appointment(id):
+    appointment = Appointment.query.get_or_404(id)
+    return jsonify({
+        'id': appointment.id,
+        'patient_id': appointment.patient_id,
+        'doctor_id': appointment.doctor_id,
+        'date_time': appointment.date_time,
+        'description': appointment.description
+    })
+
+@appointment_blueprint.route('/<int:id>', methods=['PUT'])
+def update_appointment(id):
+    data = request.json
+    appointment = Appointment.query.get_or_404(id)
+    appointment.patient_id = data['patient_id']
+    appointment.doctor_id = data['doctor_id']
+    appointment.date_time = data['date_time']
+    appointment.description = data['description']
+    db.session.commit()
+    return jsonify({
+        'id': appointment.id,
+        'patient_id': appointment.patient_id,
+        'doctor_id': appointment.doctor_id,
+        'date_time': appointment.date_time,
+        'description': appointment.description
+    })
+
+@appointment_blueprint.route('/<int:id>', methods=['DELETE'])
+def delete_appointment(id):
+    appointment = Appointment.query.get_or_404(id)
+    db.session.delete(appointment)
+    db.session.commit()
+    return jsonify({"message": "Appointment deleted successfully"})
+```
+
+#### 4. Запуск приложения
+
+Запустите Flask приложение:
+```bash
+python app.py
+```
+
+#### 5. Тестирование API в Postman
+
+1. **Создание нового пациента**: 
+   - URL: `POST /patients`
+   - Body (JSON):
+     ```json
+     {
+       "first_name": "John",
+       "last_name": "Doe",
+       "birth_date": "1990-01-01",
+       "gender": "male",
+       "phone": "1234567890",
+       "email": "john.doe@example.com",
+       "address": "123 Main St"
+     }
+     ```
+
+2. **Получение списка всех пациентов**:
+   - URL: `GET /patients`
+
+3. **Получение информации о конкретном пациенте**:
+   - URL: `GET /patients/{id}`
+
+4. **Обновление информации о пациенте**:
+   - URL: `PUT /patients/{id}`
+   - Body (JSON):
+     ```json
+     {
+       "first_name": "John",
+       "last_name": "Smith",
+       "birth_date": "1990-01-01",
+       "gender": "male",
+       "phone": "1234567890",
+       "email": "john.smith@example.com",
+       "address": "123 Main St"
+     }
+     ```
+
+5. **Удаление пациента**:
+   - URL: `DELETE /patients/{id}`
+
+6. **Создание новой записи на прием к врачу**:
+
+
+
+
+
+
+
+
+## Модуль 1: Осуществление интеграции программных модулей
+
+### Задание модуля 1: Описание предметной области
+
+#### Техническое задание на разработку мобильного приложения "Поликлиника"
+
+1. **Введение:**
+   - **Цель приложения:** Создание удобной и эффективной платформы для пациентов поликлиники, которая позволит им записываться на приемы, получать информацию о врачах и услугах, а также следить за своими медицинскими записями и результатами.
+
+2. **Типы пользователей и доступный им функционал:**
+   - **Пациенты:**
+     - Регистрация и авторизация в приложении.
+     - Просмотр доступных врачей и их расписания.
+     - Запись на прием к конкретному врачу.
+     - Отмена или перенос приема.
+     - Просмотр своего медицинского расписания и результатов.
+     - Получение оповещений о предстоящих приемах.
+   - **Врачи:**
+     - Авторизация в приложении.
+     - Просмотр своего рабочего расписания.
+     - Принятие/отклонение записей на прием пациентов.
+     - Просмотр медицинских записей пациентов.
+     - Обновление и добавление медицинских записей.
+   - **Администраторы поликлиники:**
+     - Управление базой данных врачей и пациентов.
+     - Создание и редактирование учетных записей врачей и пациентов.
+     - Управление доступными услугами и расписанием врачей.
+     - Генерация отчетов и статистики.
+
+3. **Требования к интерфейсу:**
+   - Привлекательный и понятный дизайн с использованием современных графических элементов.
+   - Легкость навигации между различными функциями и разделами приложения.
+   - Разделение функций для разных типов пользователей.
+   - Оптимальное использование экранного пространства для удобного отображения информации.
+
+4. **Требования к данным:**
+   - Безопасное хранение и обработка персональных данных пациентов.
+   - Резервное копирование и восстановление данных.
+   - Интеграция с существующей информационной системой поликлиники (если таковая имеется).
+
+### Подробное описание некоторых функций:
+
+**Регистрация и авторизация в приложении:**
+1. Откройте приложение и выберите опцию "Регистрация".
+2. Введите свои персональные данные, такие как имя, электронная почта и пароль.
+3. Подтвердите свою регистрацию, следуя инструкциям в приложении.
+4. После успешной регистрации войдите в свою учетную запись, используя свою электронную почту и пароль.
+
+**Просмотр доступных врачей и их расписания:**
+1. После авторизации в приложении откройте раздел "Поиск врачей" или "Список врачей".
+2. Вам будет предоставлена информация о доступных врачах, их специализации и сведения о расписании.
+3. Используйте фильтры по специализации, местоположению и доступности, чтобы уточнить свой поиск.
+
+**Запись на прием к конкретному врачу:**
+1. Выберите врача из списка врачей, с которым вы хотите записаться на прием.
+2. Проверьте доступное расписание врача.
+3. Введите желаемую дату и время приема.
+4. Подтвердите запись на прием и дождитесь подтверждения от врача или системы.
+
+**Отмена или перенос приема:**
+1. Откройте свое медицинское расписание в приложении.
+2. Выберите прием, который вы хотите отменить или перенести.
+3. Нажмите на опцию "Отменить" или "Перенести".
+4. Подтвердите свое решение и ожидайте подтверждения от врача или системы.
+
+**Просмотр своего медицинского расписания и результатов:**
+1. Откройте свой личный кабинет или раздел "Медицинское расписание".
+2. Выберите дату и просмотрите свои назначения на приемы и их результаты.
+3. Получите доступ к медицинским записям, диагнозам и рекомендациям от врачей.
+
+**Получение оповещений о предстоящих приемах:**
+1. В настройках приложения или профиле пользователя включите оповещения.
+2. Убедитесь, что у вас есть доступ к Интернету и разрешения приложения для отправки оповещений.
+3. Включите оповещения о предстоящих приемах, их датах и времени.
+
+**Просмотр своего рабочего графика (для врачей):**
+1. Войдите в свой личный кабинет или раздел для врачей в приложении.
+2. Выберите опцию "Рабочий график" или "График работы".
+3. Просмотрите свое рабочее расписание по дням и времени.
+
+**Принятие/отклонение записей на прием пациентов (для врачей):**
+1. Откройте раздел "Приемы пациентов" или "Записи на прием".
+2. Выберите запись, которую вы хотите принять или отклонить.
+3. Нажмите кнопку "Принять" или "Отклонить" соответственно.
+4. Подтвердите свое решение и информируйте пациента, если необходимо.
+
+## Модуль 3: Разработка API
+
+### Разработка API для управления приложением "Поликлиника"
+
+#### Введение:
+
+API должно предоставлять следующие возможности:
+1. Создание нового пациента.
+2. Получение списка всех пациентов.
+3. Получение информации о конкретном пациенте.
+4. Обновление информации о пациенте.
+5. Удаление пациента.
+6. Создание новой записи на прием к врачу.
+7. Получение списка всех записей на прием.
+8. Получение информации о конкретной записи на прием.
+9. Обновление информации о записи на прием.
+10. Удаление записи на прием.
+
+#### Примеры использования API через Postman:
+
+1. **Создание нового пациента:**
+   - **Запрос:** POST /patients
+   - **Тело запроса:**
+     ```json
+     {
+       "firstName": "Иван",
+       "lastName": "Иванов",
+       "dateOfBirth": "1980-01-01",
+       "gender": "М",
+       "phone": "+79001234567",
+       "email": "ivanov@example.com",
+       "address": "г. Москва, ул. Ленина, д. 1"
+     }
+     ```
+   - **Ответ:**
+     ```json
+     {
+       "id": 1
+     }
+     ```
+
+2. **Получение списка всех пациентов:**
+   - **Запрос:** GET /patients
+   - **Ответ:**
+     ```json
+     [
+       {
+         "id": 1,
+         "firstName": "Иван",
+         "lastName": "Иванов",
+         "dateOfBirth": "1980-01-01",
+         "gender": "М",
+         "phone": "+79001234567",
+         "email": "ivanov@example.com",
+         "address": "г. Москва, ул. Ленина, д. 1"
+       },
+       ...
+     ]
+     ```
+
+3. **Получение информации о конкретном пациенте:**
+   - **Запрос:** GET /patients/{id}
+   - **Ответ:**
+     ```json
+     {
+       "id": 1,
+       "firstName": "Иван",
+       "lastName": "Иванов",
+       "dateOfBirth": "1980-01-01",
+       "gender": "М",
+       "phone": "+79001234567",
+       "email": "ivanov@example.com",
+       "address": "г. Москва, ул. Ленина, д. 1"
+     }
+     ```
+
+4. **Обновление информации о пациенте:**
+   - **Запрос:** PUT /patients/{id}
+   - **Тело запроса:**
+     ```json
+     {
+       "firstName": "Иван",
+       "lastName": "Иванов",
+       "dateOfBirth": "1980-01-01",
+       "gender": "М",
+       "phone": "+79001234567",
+       "email": "ivanov@example.com",
+       "address": "г. Москва, ул. Ленина, д. 1"
+     }
+     ```
+   - **Ответ:**
+     ```json
+     {
+       "id": 1,
+       "firstName": "Иван",
+       "lastName": "Иванов",
+       "dateOfBirth": "1980-01-01",
+       "gender": "М",
+       "phone": "+79001234567",
+       "email": "ivanov@example.com",
+       "address": "г. Москва, ул. Ленина, д. 1"
+     }
+     ```
+
+5. **Удаление пациента:**
+   - **Запрос:** DELETE /patients/{id}
+   - **Ответ:**
+     ```json
+     {
+       "message": "Пациент успешно удален"
+     }
+     ```
+
+6. **Создание новой записи на прием к врачу:**
+   - **Запрос:** POST /appointments
+   - **Тело запроса:**
+     ```json
+     {
+       "patientId": 1,
+       "doctorId": 1,
+       "appointmentDate": "2024-07-01T10:00:00",
+       "description": "Головная боль"
+     }
+     ```
+   - **Ответ:**
+     ```json
+     {
+       "id": 1
+     }
+     ```
+
+7
+
+. **Получение списка всех записей на прием:**
+   - **Запрос:** GET /appointments
+   - **Ответ:**
+     ```json
+     [
+       {
+         "id": 1,
+         "patientId": 1,
+         "doctorId": 1,
+         "appointmentDate": "2024-07-01T10:00:00",
+         "description": "Головная боль"
+       },
+       ...
+     ]
+     ```
+
+8. **Получение информации о конкретной записи на прием:**
+   - **Запрос:** GET /appointments/{id}
+   - **Ответ:**
+     ```json
+     {
+       "id": 1,
+       "patientId": 1,
+       "doctorId": 1,
+       "appointmentDate": "2024-07-01T10:00:00",
+       "description": "Головная боль"
+     }
+     ```
+
+9. **Обновление информации о записи на прием:**
+   - **Запрос:** PUT /appointments/{id}
+   - **Тело запроса:**
+     ```json
+     {
+       "patientId": 1,
+       "doctorId": 1,
+       "appointmentDate": "2024-07-01T10:00:00",
+       "description": "Головная боль"
+     }
+     ```
+   - **Ответ:**
+     ```json
+     {
+       "id": 1,
+       "patientId": 1,
+       "doctorId": 1,
+       "appointmentDate": "2024-07-01T10:00:00",
+       "description": "Головная боль"
+     }
+     ```
+
+10. **Удаление записи на прием:**
+    - **Запрос:** DELETE /appointments/{id}
+    - **Ответ:**
+      ```json
+      {
+        "message": "Запись успешно удалена"
+      }
+      ```
+
+### Требования к API:
+
+- API должно быть реализовано в соответствии с принципами RESTful.
+- API должно быть защищено авторизацией.
+- API должно корректно обрабатывать ошибки и возвращать информативные сообщения об ошибках.
+
+### Документация API:
+
+1. **Путь для вызова каждой конечной точки:**
+   - `/patients`
+   - `/patients/{id}`
+   - `/appointments`
+   - `/appointments/{id}`
+
+2. **Методы HTTP для каждой конечной точки:**
+   - `POST /patients`
+   - `GET /patients`
+   - `GET /patients/{id}`
+   - `PUT /patients/{id}`
+   - `DELETE /patients/{id}`
+   - `POST /appointments`
+   - `GET /appointments`
+   - `GET /appointments/{id}`
+   - `PUT /appointments/{id}`
+   - `DELETE /appointments/{id}`
+
+3. **Описание и назначение каждого метода:**
+   - **POST /patients:** Создание нового пациента.
+   - **GET /patients:** Получение списка всех пациентов.
+   - **GET /patients/{id}:** Получение информации о конкретном пациенте.
+   - **PUT /patients/{id}:** Обновление информации о пациенте.
+   - **DELETE /patients/{id}:** Удаление пациента.
+   - **POST /appointments:** Создание новой записи на прием к врачу.
+   - **GET /appointments:** Получение списка всех записей на прием.
+   - **GET /appointments/{id}:** Получение информации о конкретной записи на прием.
+   - **PUT /appointments/{id}:** Обновление информации о записи на прием.
+   - **DELETE /appointments/{id}:** Удаление записи на прием.
+
+4. **Поля данных запроса:**
+   - **POST /patients:**
+     - Тело запроса: `firstName`, `lastName`, `dateOfBirth`, `gender`, `phone`, `email`, `address`.
+   - **PUT /patients/{id}:**
+     - Тело запроса: `firstName`, `lastName`, `dateOfBirth`, `gender`, `phone`, `email`, `address`.
+   - **POST /appointments:**
+     - Тело запроса: `patientId`, `doctorId`, `appointmentDate`, `description`.
+   - **PUT /appointments/{id}:**
+     - Тело запроса: `patientId`, `doctorId`, `appointmentDate`, `description`.
+
+5. **Объяснение данных запроса:**
+   - **POST /patients:** Все поля обязательны.
+   - **PUT /patients/{id}:** Все поля обязательны.
+   - **POST /appointments:** Все поля обязательны.
+   - **PUT /appointments/{id}:** Все поля обязательны.
+
+### Требования к разработке:
+
+1. **Название приложения:**
+   - Используйте соответствующие названия для ваших приложений и файлов.
+
+2. **Обработка ошибок:**
+   - При возникновении непредвиденной ошибки приложение не должно аварийно завершать работу.
+
+3. **Оформление кода:**
+   - Идентификаторы переменных, методов и классов должны отражать суть и/или цель их использования.
+   - Идентификаторы должны соответствовать соглашению об именовании (Code Convention) и стилю CamelCase или snake_case.
+   - Допустимо использование не более одной команды в строке.
+
+4. **Комментарии:**
+   - Используйте комментарии для пояснения неочевидных фрагментов кода.
+   - Избегайте комментирования кода. Хороший код воспринимается как обычный текст.
+   - Комментарии должны присутствовать только в местах, которые требуют дополнительного пояснения.
+
+Эти задания могут быть выполнены с использованием Postman для тестирования API и разработки, а также с использованием системы контроля версий для управления проектом.
+
